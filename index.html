@@ -432,6 +432,11 @@
 
         // --- Inicialização ---
         try {
+            // Verifica se a configuração do Firebase está presente
+            if (!firebaseConfig.apiKey) {
+                throw new Error("Configuração do Firebase não encontrada. Verifique as variáveis de ambiente.");
+            }
+            
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
@@ -452,6 +457,7 @@
                             console.log("Tentando signInAnonymously");
                             await signInAnonymously(auth);
                         }
+
                     } catch (authError) {
                         console.error("Erro na autenticação: ", authError);
                         loadingIndicator.textContent = "Erro de autenticação.";
@@ -462,10 +468,16 @@
         } catch (error) {
             console.error("Erro ao inicializar o Firebase: ", error);
             loadingIndicator.textContent = "Erro ao conectar com o banco de dados.";
+            // Adiciona uma mensagem mais clara se a config estiver faltando
+            if (error.message.includes("Configuração do Firebase não encontrada")) {
+                 loadingIndicator.textContent = "Erro: Configuração do Firebase não carregada. Atualize a página.";
+            }
         }
 
     </script>
 </body>
 </html>
+
+
 
 
