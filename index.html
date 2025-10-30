@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Máquina de Sorvete</title>
+    <!-- Carrega o Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Carrega os ícones do Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Configuração do Tailwind para o modo escuro e fontes -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            }
+        }
+        // Aplica o modo escuro por padrão
+        document.documentElement.classList.add('dark');
+    </script>
+    <style>
+        /* Estilo para a barra de rolagem */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; /* gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* gray-500 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans antialiased min-h-screen">
+
+    <!-- Container Principal -->
+    <div class="container mx-auto max-w-7xl p-4 sm:p-8">
+        
+        <!-- Cabeçalho -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white">Controle da Máquina de Sorvete</h1>
+            <p class="text-lg text-gray-400 mt-2">Gerencie a entrada e saída da sua máquina.</p>
+        </header>
+
+        <!-- Seção de Status da Máquina Única -->
+        <div class="max-w-2xl mx-auto">
+            <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-700 pb-2">Status da Máquina</h2>
+            
+            <!-- Indicador de Carregamento -->
+            <div id="loading-indicator" class="text-center py-10">
+                <p class="text-gray-400">Carregando status da máquina...</p>
+            </div>
+
+            <!-- Container do Status (inicialmente oculto) -->
+            <div id="machine-status-container" class="hidden bg-gray-800 rounded-lg shadow-xl p-6 border border-gray-700 transition-all">
+                <!-- O conteúdo será preenchido pelo JS -->
+                <div class="flex justify-between items-start mb-4">
+                    <h3 id="machine-name-display" class="text-2xl font-bold text-white"></h3>
+                    <div id="machine-status-badge">
+                        <!-- Badge (Estoque/Alocada) entra aqui -->
+                    </div>
+                </div>
+                
+                <div id="machine-details-display" class="text-sm">
+                    <!-- Detalhes (Cliente, Responsável, etc.) entram aqui -->
+                </div>
+                
+                <div id="machine-action-button-container" class="mt-6">
+                    <!-- Botão (Registrar Saída/Entrada) entra aqui -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal: Registrar Saída -->
+    <div id="checkout-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden transition-opacity duration-300">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
+            <!-- Cabeçalho do Modal -->
+            <div class="flex justify-between items-center p-5 border-b border-gray-700">
+                <h3 class="text-xl font-semibold text-white">Registrar Saída da Máquina</h3>
+                <button id="close-checkout-modal" type="button" class="text-gray-400 bg-transparent hover:bg-gray-700 hover:text-white rounded-lg text-sm p-1.5 ml-auto inline-flex items-center">
+                    <i class="ph ph-x text-2xl"></i>
+                    <span class="sr-only">Fechar modal</span>
+                </button>
+            </div>
+            <!-- Corpo do Modal (Formulário) -->
+            <form id="checkout-form" class="p-6 space-y-4">
+                <input type="hidden" id="checkout-machine-id">
+                <h4 class="text-lg font-medium text-white mb-2">Máquina: <span id="checkout-machine-name" class="text-blue-400"></span></h4>
+                <div>
+                    <label for="responsible-name" class="block mb-2 text-sm font-medium text-gray-300">Nome do Responsável</label>
+                    <input type="text" id="responsible-name" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="Ex: João Silva" required>
+                </div>
+                <div>
+                    <label for="client-name" class="block mb-2 text-sm font-medium text-gray-300">Cliente (Para onde vai)</label>
+                    <input type="text" id="client-name" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="Ex: Padaria Central" required>
+                </div>
+                <div>
+                    <label for="return-date" class="block mb-2 text-sm font-medium text-gray-300">Previsão de Devolução</label>
+                    <input type="date" id="return-date" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
+                </div>
+                <!-- Botões do Formulário -->
+                <div class="flex justify-end gap-3 pt-4">
+                     <button type="button" id="cancel-checkout-modal" class="text-gray-300 bg-gray-600 hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors duration-200">Cancelar</button>
+                    <button type="submit" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors duration-200">
+                        Confirmar Saída
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Registrar Entrada (Check-in) -->
+    <div id="checkin-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden transition-opacity duration-300">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
+            <!-- Cabeçalho do Modal -->
+            <div class="flex justify-between items-center p-5 border-b border-gray-700">
+                <h3 class="text-xl font-semibold text-white">Registrar Entrada (Devolução)</h3>
+                <button id="close-checkin-modal" type="button" class="text-gray-400 bg-transparent hover:bg-gray-700 hover:text-white rounded-lg text-sm p-1.5 ml-auto inline-flex items-center">
+                    <i class="ph ph-x text-2xl"></i>
+                    <span class="sr-only">Fechar modal</span>
+                </button>
+            </div>
+            <!-- Corpo do Modal (Confirmação) -->
+            <form id="checkin-form">
+                <input type="hidden" id="checkin-machine-id">
+                <div class="p-6 text-center">
+                    <i class="ph ph-arrow-bend-double-up-left text-5xl text-green-400 mb-4"></i>
+                    <h4 class="text-lg font-medium text-white mb-2">Confirmar devolução da máquina?</h4>
+                    <p class="text-2xl font-bold text-blue-400 mb-4" id="checkin-machine-name"></p>
+                    <p class="text-gray-400">Esta ação moverá a máquina de volta para o "Estoque".</p>
+                </div>
+                <!-- Botões -->
+                <div class="flex justify-center gap-3 p-6 border-t border-gray-700">
+                     <button type="button" id="cancel-checkin-modal" class="text-gray-300 bg-gray-600 hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors duration-200">Cancelar</button>
+                    <button type="submit" class="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors duration-200">
+                        Confirmar Entrada
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // Importações do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            addDoc, 
+            updateDoc, 
+            onSnapshot, 
+            collection, 
+            query,
+            setDoc, // Importa o setDoc
+            setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Configuração do Firebase ---
+        
+        // Habilita logs para debug
+        setLogLevel('Debug');
+
+        // Configs e IDs injetados pelo ambiente
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, auth, db, userId, machineDocRef;
+        const MACHINE_ID = "main-machine"; // ID Fixo para a máquina única
+        const MACHINE_NAME = "Máquina Principal"; // Nome Fixo
+
+        // Seletores de Elementos DOM
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const machineStatusContainer = document.getElementById('machine-status-container');
+        const machineNameDisplay = document.getElementById('machine-name-display');
+        const machineStatusBadge = document.getElementById('machine-status-badge');
+        const machineDetailsDisplay = document.getElementById('machine-details-display');
+        const machineActionButtonContainer = document.getElementById('machine-action-button-container');
+
+
+        // Seletores do Modal de Saída (Checkout)
+        const checkoutModal = document.getElementById('checkout-modal');
+        const checkoutForm = document.getElementById('checkout-form');
+        const closeCheckoutModal = document.getElementById('close-checkout-modal');
+        const cancelCheckoutModal = document.getElementById('cancel-checkout-modal');
+        const checkoutMachineId = document.getElementById('checkout-machine-id');
+        const checkoutMachineName = document.getElementById('checkout-machine-name');
+        const responsibleNameInput = document.getElementById('responsible-name');
+        const clientNameInput = document.getElementById('client-name');
+        const returnDateInput = document.getElementById('return-date');
+
+        // Seletores do Modal de Entrada (Checkin)
+        const checkinModal = document.getElementById('checkin-modal');
+        const checkinForm = document.getElementById('checkin-form');
+        const closeCheckinModal = document.getElementById('close-checkin-modal');
+        const cancelCheckinModal = document.getElementById('cancel-checkin-modal');
+        const checkinMachineId = document.getElementById('checkin-machine-id');
+        const checkinMachineName = document.getElementById('checkin-machine-name');
+
+
+        // --- Funções Auxiliares ---
+
+        // Formata data YYYY-MM-DD para DD/MM/YYYY
+        function formatDate(dateString) {
+            if (!dateString) return "N/A";
+            try {
+                const [year, month, day] = dateString.split('-');
+                return `${day}/${month}/${year}`;
+            } catch (error) {
+                console.error("Erro ao formatar data:", dateString, error);
+                return dateString;
+            }
+        }
+
+        // Abre o modal de Saída
+        function openCheckoutModal(id, name) {
+            checkoutMachineId.value = id;
+            checkoutMachineName.textContent = name;
+            checkoutModal.classList.remove('hidden');
+        }
+
+        // Fecha o modal de Saída
+        function closeCheckoutModalFunc() {
+            checkoutModal.classList.add('hidden');
+            checkoutForm.reset();
+        }
+
+        // Abre o modal de Entrada
+        function openCheckinModal(id, name) {
+            checkinMachineId.value = id;
+            checkinMachineName.textContent = name;
+            checkinModal.classList.remove('hidden');
+        }
+
+        // Fecha o modal de Entrada
+        function closeCheckinModalFunc() {
+            checkinModal.classList.add('hidden');
+            checkinForm.reset();
+        }
+
+        // --- Renderização ---
+
+        // Renderiza o estado da máquina única
+        function renderMachineState(machine, id) {
+            machineNameDisplay.textContent = machine.name;
+            
+            let statusBadgeHTML, machineDetailsHTML, actionButtonHTML;
+
+            if (machine.status === 'Estoque') {
+                // Em Estoque
+                statusBadgeHTML = `<span class="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-green-900 text-green-300">
+                                   <i class="ph ph-check-circle align-middle mr-1.5"></i>
+                                   Em Estoque
+                                   </span>`;
+                
+                machineDetailsHTML = `<p class="text-gray-400">Pronta para alocação.</p>`;
+
+                actionButtonHTML = `<button data-id="${id}" data-name="${machine.name}" class="btn-checkout w-full text-white bg-yellow-600 hover:bg-yellow-700 focus:ring-4 focus:ring-yellow-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors duration-200">
+                                    <i class="ph ph-arrow-fat-right align-middle mr-1.5"></i>
+                                    Registrar Saída
+                                    </button>`;
+            } else {
+                // Alocada
+                statusBadgeHTML = `<span class="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-yellow-900 text-yellow-300">
+                                   <i class="ph ph-truck align-middle mr-1.5"></i>
+                                   Alocada
+                                   </span>`;
+
+                machineDetailsHTML = `
+                    <div class="space-y-2">
+                        <p class="text-gray-400"><strong class="font-medium text-gray-200">Cliente:</strong> ${machine.currentClient || 'N/A'}</p>
+                        <p class="text-gray-400"><strong class="font-medium text-gray-200">Responsável:</strong> ${machine.currentResponsible || 'N/A'}</p>
+                        <p class="text-gray-400"><strong class="font-medium text-gray-200">Devolução:</strong> ${formatDate(machine.expectedReturn) || 'N/A'}</p>
+                    </div>
+                `;
+
+                actionButtonHTML = `<button data-id="${id}" data-name="${machine.name}" class="btn-checkin w-full text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors duration-200">
+                                    <i class="ph ph-arrow-fat-left align-middle mr-1.5"></i>
+                                    Registrar Entrada
+                                    </button>`;
+            }
+
+            machineStatusBadge.innerHTML = statusBadgeHTML;
+            machineDetailsDisplay.innerHTML = machineDetailsHTML;
+            machineActionButtonContainer.innerHTML = actionButtonHTML;
+            
+            loadingIndicator.classList.add('hidden');
+            machineStatusContainer.classList.remove('hidden');
+        }
+
+        // Carrega o estado da máquina única
+        async function loadMachineState() {
+            if (!userId) {
+                console.error("UserID não definido. Não é possível carregar máquina.");
+                return;
+            }
+            
+            console.log(`Carregando máquina principal (compartilhada)`);
+            // Usamos um ID fixo para o documento da máquina em um local público
+            machineDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'machines', MACHINE_ID);
+
+            onSnapshot(machineDocRef, async (snapshot) => {
+                if (snapshot.exists()) {
+                    // Documento existe, renderiza
+                    console.log("Dados da máquina carregados.");
+                    const machine = snapshot.data();
+                    renderMachineState(machine, MACHINE_ID);
+                } else {
+                    // Documento não existe, cria um padrão
+                    console.log("Máquina não encontrada. Criando máquina padrão...");
+                    try {
+                        const defaultMachine = {
+                            name: MACHINE_NAME,
+                            status: "Estoque",
+                            currentClient: null,
+                            currentResponsible: null,
+                            expectedReturn: null
+                        };
+                        // Usa setDoc para criar o documento com o ID específico
+                        await setDoc(machineDocRef, defaultMachine);
+                        // O onSnapshot será chamado novamente e irá renderizar o estado
+                        console.log("Máquina padrão criada.");
+                    } catch (error) {
+                        console.error("Erro ao criar máquina padrão: ", error);
+                        loadingIndicator.textContent = "Erro ao configurar a máquina.";
+                    }
+                }
+            }, (error) => {
+                console.error("Erro ao carregar máquina: ", error);
+                loadingIndicator.textContent = "Erro ao carregar dados.";
+            });
+        }
+
+
+        // --- Lógica de Eventos (Handlers) ---
+
+        // Registrar Saída (Submit do Modal)
+        checkoutForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = checkoutMachineId.value;
+            const responsible = responsibleNameInput.value.trim();
+            const client = clientNameInput.value.trim();
+            const returnDate = returnDateInput.value;
+
+            if (!id || !responsible || !client || !returnDate) return;
+
+            console.log(`Registrando saída da máquina ${id}`);
+            try {
+                // machineDocRef já está definido globalmente e aponta para o doc correto
+                await updateDoc(machineDocRef, {
+                    status: "Alocada",
+                    currentClient: client,
+                    currentResponsible: responsible,
+                    expectedReturn: returnDate
+                });
+                console.log("Saída registrada com sucesso.");
+                closeCheckoutModalFunc();
+            } catch (error) {
+                console.error("Erro ao registrar saída: ", error);
+            }
+        });
+
+        // Registrar Entrada (Submit do Modal)
+        checkinForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = checkinMachineId.value;
+            if (!id) return;
+
+            console.log(`Registrando entrada da máquina ${id}`);
+            try {
+                // machineDocRef já está definido globalmente
+                await updateDoc(machineDocRef, {
+                    status: "Estoque",
+                    currentClient: null,
+                    currentResponsible: null,
+                    expectedReturn: null
+                });
+                console.log("Entrada registrada com sucesso.");
+                closeCheckinModalFunc();
+            } catch (error)
+             {
+                console.error("Erro ao registrar entrada: ", error);
+            }
+        });
+
+        // Event listener para o container de ação (substitui o machineList listener)
+        machineActionButtonContainer.addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            if (!button) return;
+
+            const id = button.dataset.id;
+            const name = button.dataset.name;
+
+            if (button.classList.contains('btn-checkout')) {
+                console.log("Abrindo modal de saída para:", id);
+                openCheckoutModal(id, name);
+            } else if (button.classList.contains('btn-checkin')) {
+                console.log("Abrindo modal de entrada para:", id);
+                openCheckinModal(id, name);
+            }
+        });
+
+        // Fechar Modais
+        [closeCheckoutModal, cancelCheckoutModal].forEach(btn => btn.addEventListener('click', closeCheckoutModalFunc));
+        [closeCheckinModal, cancelCheckinModal].forEach(btn => btn.addEventListener('click', closeCheckinModalFunc));
+        
+        // Fechar modal clicando fora
+        checkoutModal.addEventListener('click', (e) => {
+            if (e.target === checkoutModal) closeCheckoutModalFunc();
+        });
+        checkinModal.addEventListener('click', (e) => {
+            if (e.target === checkinModal) closeCheckinModalFunc();
+        });
+
+        // --- Inicialização ---
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            // Listener de Autenticação
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    console.log("Usuário autenticado:", user.uid);
+                    userId = user.uid;
+                    loadMachineState(); // Carrega o estado da máquina única
+                } else {
+                    console.log("Usuário não autenticado, tentando login...");
+                    try {
+                        if (initialAuthToken) {
+                            console.log("Tentando signInWithCustomToken");
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            console.log("Tentando signInAnonymously");
+                            await signInAnonymously(auth);
+                        }
+                    } catch (authError) {
+                        console.error("Erro na autenticação: ", authError);
+                        loadingIndicator.textContent = "Erro de autenticação.";
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error("Erro ao inicializar o Firebase: ", error);
+            loadingIndicator.textContent = "Erro ao conectar com o banco de dados.";
+        }
+
+    </script>
+</body>
+</html>
+
+
