@@ -57,7 +57,7 @@
             
             <!-- Indicador de Carregamento -->
             <div id="loading-indicator" class="text-center py-10">
-                <p class="text-gray-400">Carregando status da máquina...</p>
+                <p class="text-gray-400">Conectando ao servidor...</p>
             </div>
 
             <!-- Container do Status (inicialmente oculto) -->
@@ -177,12 +177,8 @@
         
         // Habilita logs para debug
         setLogLevel('Debug');
-
-        // Configs e IDs injetados pelo ambiente
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
+        
+        // Configs e IDs
         let app, auth, db, userId, machineDocRef;
         const MACHINE_ID = "main-machine"; // ID Fixo para a máquina única
         const MACHINE_NAME = "Máquina Principal"; // Nome Fixo
@@ -195,8 +191,7 @@
         const machineDetailsDisplay = document.getElementById('machine-details-display');
         const machineActionButtonContainer = document.getElementById('machine-action-button-container');
 
-
-        // Seletores do Modal de Saída (Checkout)
+        // ... (seletores de modal permanecem os mesmos) ...
         const checkoutModal = document.getElementById('checkout-modal');
         const checkoutForm = document.getElementById('checkout-form');
         const closeCheckoutModal = document.getElementById('close-checkout-modal');
@@ -207,7 +202,6 @@
         const clientNameInput = document.getElementById('client-name');
         const returnDateInput = document.getElementById('return-date');
 
-        // Seletores do Modal de Entrada (Checkin)
         const checkinModal = document.getElementById('checkin-modal');
         const checkinForm = document.getElementById('checkin-form');
         const closeCheckinModal = document.getElementById('close-checkin-modal');
@@ -218,7 +212,7 @@
 
         // --- Funções Auxiliares ---
 
-        // Formata data YYYY-MM-DD para DD/MM/YYYY
+        // ... (funções auxiliares de modal e formato de data permanecem as mesmas) ...
         function formatDate(dateString) {
             if (!dateString) return "N/A";
             try {
@@ -229,32 +223,25 @@
                 return dateString;
             }
         }
-
-        // Abre o modal de Saída
         function openCheckoutModal(id, name) {
             checkoutMachineId.value = id;
             checkoutMachineName.textContent = name;
             checkoutModal.classList.remove('hidden');
         }
-
-        // Fecha o modal de Saída
         function closeCheckoutModalFunc() {
             checkoutModal.classList.add('hidden');
             checkoutForm.reset();
         }
-
-        // Abre o modal de Entrada
         function openCheckinModal(id, name) {
             checkinMachineId.value = id;
             checkinMachineName.textContent = name;
             checkinModal.classList.remove('hidden');
         }
-
-        // Fecha o modal de Entrada
         function closeCheckinModalFunc() {
             checkinModal.classList.add('hidden');
             checkinForm.reset();
         }
+
 
         // --- Renderização ---
 
@@ -307,13 +294,13 @@
         }
 
         // Carrega o estado da máquina única
-        async function loadMachineState() {
+        async function loadMachineState(appId) {
             if (!userId) {
                 console.error("UserID não definido. Não é possível carregar máquina.");
                 return;
             }
             
-            console.log(`Carregando máquina principal (compartilhada)`);
+            console.log(`Carregando máquina principal (compartilhada) para o appId: ${appId}`);
             // Usamos um ID fixo para o documento da máquina em um local público
             machineDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'machines', MACHINE_ID);
 
@@ -352,7 +339,7 @@
 
         // --- Lógica de Eventos (Handlers) ---
 
-        // Registrar Saída (Submit do Modal)
+        // ... (handlers de eventos permanecem os mesmos) ...
         checkoutForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = checkoutMachineId.value;
@@ -378,7 +365,6 @@
             }
         });
 
-        // Registrar Entrada (Submit do Modal)
         checkinForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = checkinMachineId.value;
@@ -401,7 +387,6 @@
             }
         });
 
-        // Event listener para o container de ação (substitui o machineList listener)
         machineActionButtonContainer.addEventListener('click', (e) => {
             const button = e.target.closest('button');
             if (!button) return;
@@ -418,11 +403,9 @@
             }
         });
 
-        // Fechar Modais
         [closeCheckoutModal, cancelCheckoutModal].forEach(btn => btn.addEventListener('click', closeCheckoutModalFunc));
         [closeCheckinModal, cancelCheckinModal].forEach(btn => btn.addEventListener('click', closeCheckinModalFunc));
         
-        // Fechar modal clicando fora
         checkoutModal.addEventListener('click', (e) => {
             if (e.target === checkoutModal) closeCheckoutModalFunc();
         });
@@ -430,53 +413,94 @@
             if (e.target === checkinModal) closeCheckinModalFunc();
         });
 
+
         // --- Inicialização ---
-        try {
-            // Verifica se a configuração do Firebase está presente
-            if (!firebaseConfig.apiKey) {
-                throw new Error("Configuração do Firebase não encontrada. Verifique as variáveis de ambiente.");
-            }
+
+        /**
+         * Espera pelas variáveis de ambiente do Firebase serem injetadas.
+         * Isso evita erros de inicialização se a página carregar
+         * antes do ambiente estar pronto.
+         */
+        function waitForEnvVariables(callback) {
+            let attempts = 0;
+            const maxAttempts = 20; // Espera até 5 segundos (20 * 250ms)
             
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
+            const interval = setInterval(() => {
+                const configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+                const tokenStr = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                const appIdStr = typeof __app_id !== 'undefined' ? __app_id : null;
 
-            // Listener de Autenticação
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    console.log("Usuário autenticado:", user.uid);
-                    userId = user.uid;
-                    loadMachineState(); // Carrega o estado da máquina única
+                // Verifica se todas as variáveis necessárias estão presentes e não são strings vazias/{}
+                if (configStr && configStr !== '{}' && tokenStr && appIdStr) {
+                    clearInterval(interval);
+                    console.log("Variáveis de ambiente do Firebase carregadas.");
+                    callback(configStr, tokenStr, appIdStr);
                 } else {
-                    console.log("Usuário não autenticado, tentando login...");
-                    try {
-                        if (initialAuthToken) {
-                            console.log("Tentando signInWithCustomToken");
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            console.log("Tentando signInAnonymously");
-                            await signInAnonymously(auth);
-                        }
-
-                    } catch (authError) {
-                        console.error("Erro na autenticação: ", authError);
-                        loadingIndicator.textContent = "Erro de autenticação.";
+                    attempts++;
+                    if (attempts > maxAttempts) {
+                        clearInterval(interval);
+                        console.error("Timeout: Variáveis de ambiente do Firebase não foram carregadas.");
+                        loadingIndicator.textContent = "Erro: Não foi possível carregar a configuração. Tente atualizar a página (F5).";
+                    } else {
+                        console.warn(`Aguardando variáveis do Firebase... (Tentativa ${attempts})`);
+                        loadingIndicator.textContent = `Conectando... (${attempts})`;
                     }
                 }
-            });
-
-        } catch (error) {
-            console.error("Erro ao inicializar o Firebase: ", error);
-            loadingIndicator.textContent = "Erro ao conectar com o banco de dados.";
-            // Adiciona uma mensagem mais clara se a config estiver faltando
-            if (error.message.includes("Configuração do Firebase não encontrada")) {
-                 loadingIndicator.textContent = "Erro: Configuração do Firebase não carregada. Atualize a página.";
-            }
+            }, 250); // Verifica a cada 250ms
         }
+
+        // Inicia o aplicativo após verificar as variáveis de ambiente
+        waitForEnvVariables((configString, tokenString, appIdString) => {
+            try {
+                const firebaseConfig = JSON.parse(configString);
+                const initialAuthToken = tokenString;
+                const appId = appIdString;
+
+                if (!firebaseConfig.apiKey) {
+                     throw new Error("Configuração do Firebase inválida (sem apiKey).");
+                }
+                
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Listener de Autenticação
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        console.log("Usuário autenticado:", user.uid);
+                        userId = user.uid;
+                        loadMachineState(appId); // Carrega o estado da máquina única
+                    } else {
+                        console.log("Usuário não autenticado, tentando login...");
+                        try {
+                            if (initialAuthToken) {
+                                console.log("Tentando signInWithCustomToken");
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                // Fallback muito improvável no ambiente, mas seguro
+                                console.warn("Token inicial não encontrado, tentando signInAnonymously");
+                                await signInAnonymously(auth);
+                            }
+
+                        } catch (authError) {
+                            console.error("Erro na autenticação: ", authError);
+                            loadingIndicator.textContent = "Erro de autenticação.";
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Erro ao inicializar o Firebase: ", error);
+                loadingIndicator.textContent = "Erro ao conectar com o banco de dados.";
+            }
+        });
 
     </script>
 </body>
 </html>
+
+
+
 
 
 
