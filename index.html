@@ -212,7 +212,7 @@
 
         // --- Funções Auxiliares ---
 
-        // ... (funções auxiliares de modal e formato de data permanecem as mesmas) ...
+        // ... (funções auxiliares de modal e formato de data permanecem os mesmas) ...
         function formatDate(dateString) {
             if (!dateString) return "N/A";
             try {
@@ -416,44 +416,26 @@
 
         // --- Inicialização ---
 
-        /**
-         * Espera pelas variáveis de ambiente do Firebase serem injetadas.
-         * Isso evita erros de inicialização se a página carregar
-         * antes do ambiente estar pronto.
-         */
-        function waitForEnvVariables(callback) {
-            let attempts = 0;
-            const maxAttempts = 20; // Espera até 5 segundos (20 * 250ms)
+        // Adiciona um listener para garantir que o DOM esteja completo
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM carregado. Tentando inicializar Firebase...");
             
-            const interval = setInterval(() => {
-                const configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-                const tokenStr = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                const appIdStr = typeof __app_id !== 'undefined' ? __app_id : null;
+            // Tenta obter as variáveis de ambiente
+            const configString = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+            const appIdString = typeof __app_id !== 'undefined' ? __app_id : null;
 
-                // Verifica se todas as variáveis necessárias estão presentes e não são strings vazias/{}
-                if (configStr && configStr !== '{}' && tokenStr && appIdStr) {
-                    clearInterval(interval);
-                    console.log("Variáveis de ambiente do Firebase carregadas.");
-                    callback(configStr, tokenStr, appIdStr);
-                } else {
-                    attempts++;
-                    if (attempts > maxAttempts) {
-                        clearInterval(interval);
-                        console.error("Timeout: Variáveis de ambiente do Firebase não foram carregadas.");
-                        loadingIndicator.textContent = "Erro: Não foi possível carregar a configuração. Tente atualizar a página (F5).";
-                    } else {
-                        console.warn(`Aguardando variáveis do Firebase... (Tentativa ${attempts})`);
-                        loadingIndicator.textContent = `Conectando... (${attempts})`;
-                    }
-                }
-            }, 250); // Verifica a cada 250ms
-        }
+            // Verifica se as variáveis essenciais estão presentes
+            if (!configString || configString === '{}' || !appIdString) {
+                console.error("Erro fatal: Variáveis de ambiente __firebase_config ou __app_id não encontradas.");
+                loadingIndicator.textContent = "Erro: Configuração do Firebase não carregada. Tente atualizar a página (F5).";
+                return; // Para a execução
+            }
 
-        // Inicia o aplicativo após verificar as variáveis de ambiente
-        waitForEnvVariables((configString, tokenString, appIdString) => {
+            console.log("Configuração do Firebase e App ID encontrados. Inicializando...");
+            
             try {
                 const firebaseConfig = JSON.parse(configString);
-                const initialAuthToken = tokenString;
                 const appId = appIdString;
 
                 if (!firebaseConfig.apiKey) {
@@ -477,7 +459,7 @@
                                 console.log("Tentando signInWithCustomToken");
                                 await signInWithCustomToken(auth, initialAuthToken);
                             } else {
-                                // Fallback muito improvável no ambiente, mas seguro
+                                // Fallback se o token inicial não for fornecido
                                 console.warn("Token inicial não encontrado, tentando signInAnonymously");
                                 await signInAnonymously(auth);
                             }
@@ -498,6 +480,9 @@
     </script>
 </body>
 </html>
+
+
+
 
 
 
