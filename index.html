@@ -164,10 +164,29 @@
 
         // --- Configuração e Variáveis Globais ---
         
+        // Elementos do DOM (movidos para cima para verificação)
+        const mainLoading = document.getElementById('mainLoading');
+        const mainContent = document.getElementById('mainContent');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        
         // Configuração do Firebase (fornecida pelo ambiente)
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        /* Bloco de verificação removido, pois agora usamos a config manual */
+
+        // ⬇️⬇️ CONFIGURAÇÃO DO FIREBASE FORNECIDA PELO USUÁRIO ⬇️⬇️
+        const firebaseConfig = {
+          apiKey: "AIzaSyBimiOSRAPPjz88lM1djsN47QnEBvSWDi0",
+          authDomain: "maquina-de-sorvete.firebaseapp.com",
+          projectId: "maquina-de-sorvete",
+          storageBucket: "maquina-de-sorvete.firebasestorage.app",
+          messagingSenderId: "29237054721",
+          appId: "1:29237054721:web:f766dfa98b6f9993ea5f00",
+          measurementId: "G-TGFKC6CSNM"
+        };
+        // ⬆️⬆️ CONFIGURAÇÃO DO FIREBASE FORNECIDA PELO USUÁRIO ⬆️⬆️
+
+        // Ajustamos essas variáveis, já que não estamos mais no ambiente especial
+        const appId = firebaseConfig.projectId; // Usamos o ID do projeto
+        const initialAuthToken = null; // Força o login anônimo
 
         // Inicializa Firebase
         const app = initializeApp(firebaseConfig);
@@ -181,9 +200,7 @@
         let historicoCollectionRef = null;
 
         // --- Referências aos Elementos do DOM ---
-        const mainLoading = document.getElementById('mainLoading');
-        const mainContent = document.getElementById('mainContent');
-        const userIdDisplay = document.getElementById('userIdDisplay');
+        // (Já definidos acima para a verificação de erro)
         
         const statusDentro = document.getElementById('statusDentro');
         const statusFora = document.getElementById('statusFora');
@@ -406,7 +423,7 @@
                 const batch = writeBatch(db);
                 
                 // 1. Adiciona novo item ao histórico
-                const novoHistoricoRef = doc(collection(db, `artifacts/${appId}/public/data/maquinaHistorico`));
+                const novoHistoricoRef = doc(historicoCollectionRef); // CORRIGIDO: Usa a ref global
                 batch.set(novoHistoricoRef, novoHistorico);
                 
                 // 2. Atualiza o status
@@ -464,7 +481,7 @@
                 const batch = writeBatch(db);
                 
                 // 1. Adiciona novo item ao histórico
-                const novoHistoricoRef = doc(collection(db, `artifacts/${appId}/public/data/maquinaHistorico`));
+                const novoHistoricoRef = doc(historicoCollectionRef); // CORRIGIDO: Usa a ref global
                 batch.set(novoHistoricoRef, novoHistorico);
                 
                 // 2. Atualiza o status
@@ -490,9 +507,9 @@
             userIdDisplay.textContent = userId;
             
             // Define as referências aos documentos/coleções
-            // Usamos /public/data/ para dados compartilhados pela equipe
-            const statusCollectionPath = `artifacts/${appId}/public/data/maquinaStatus`;
-            const historicoCollectionPath = `artifacts/${appId}/public/data/maquinaHistorico`;
+            // Caminhos simplificados para funcionar com regras de teste padrão
+            const statusCollectionPath = `maquinaStatus`;
+            const historicoCollectionPath = `maquinaHistorico`;
             
             statusDocRef = doc(db, statusCollectionPath, "status");
             historicoCollectionRef = collection(db, historicoCollectionPath);
@@ -582,6 +599,7 @@
     </script>
 </body>
 </html>
+
 
 
 
